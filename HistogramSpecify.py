@@ -25,7 +25,11 @@ def get_hist(image):
 
 
 @njit(cache=True)
+<<<<<<< HEAD
 def _one_dim_hist_normalize(hist):
+=======
+def _one_dim_normalize_hist(hist):
+>>>>>>> 490cb344929d6037d90f6165626636ac05f22ba9
     assert hist.ndim == 1
     hist_norm = np.divide(hist, hist.sum())
     return hist_norm
@@ -35,7 +39,11 @@ def _one_dim_hist_normalize(hist):
 def _one_dim_hist_equlize(hist):
     assert hist.ndim == 1
     assert hist.shape[0] == DISCRETE_VALUE_NUM
+<<<<<<< HEAD
     norm_hist = _one_dim_hist_normalize(hist.astype(np.uint8))
+=======
+    norm_hist = _one_dim_normalize_hist(hist.astype(np.uint8))
+>>>>>>> 490cb344929d6037d90f6165626636ac05f22ba9
     eq_histmap = np.zeros_like(hist, dtype=np.uint8)
     _sum = 0
     for i in range(DISCRETE_VALUE_NUM):
