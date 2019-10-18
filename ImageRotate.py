@@ -2,9 +2,9 @@ import argparse
 import math
 
 import matplotlib.pyplot as plt
+import matplotlib.image as imgplt
 import numpy as np
-from cv2 import cv2
-from numba import njit
+from numba import jit, njit
 from numba import types
 from numba.typed import Dict
 
@@ -131,9 +131,9 @@ def _is_within_simple_rect(x, y, height, width):
     return x >= 0 and x < height and y >= 0 and y < width
 
 
-@njit(cache=True)
+# @jit(nopython=False)
 def imrotate(image, angle, method):
-    methods = Dict.empty(key_type=types.string, value_type=types.functions)
+    methods = dict()
     methods["bilinear"] = bilinear_interpolation
     methods["nearest"] = nearest_neighbor_interpolation
 
@@ -161,6 +161,7 @@ def imrotate(image, angle, method):
             _x = x - new_x_origin
             _y = y - new_y_origin
             x_old, y_old = _get_rotated_coord(_x, _y, -rad_angle)
+            # 检测逆变换后的点是否在原图内部
             if _is_within_simple_rect(
                 x_old + x_origin, y_old + y_origin, height, width
             ):
@@ -172,8 +173,7 @@ def imrotate(image, angle, method):
 
 def main():
     args = parse_args()
-    image = cv2.imread(args.image_path)
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    image = imgplt.imread(args.image_path)
 
     plt.figure("Original Image")
     plt.imshow(image)
@@ -184,8 +184,9 @@ def main():
     plt.figure("Rotated Image")
     plt.imshow(image)
     plt.axis("off")
-    # plt.show()
+    plt.show()
 
 
 if __name__ == "__main__":
     main()
+
