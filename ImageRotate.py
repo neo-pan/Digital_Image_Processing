@@ -1,24 +1,11 @@
 import argparse
 import math
 
-import matplotlib.pyplot as plt
 import matplotlib.image as imgplt
+import matplotlib.pyplot as plt
 import numpy as np
-from numba import jit, njit
-from numba import types
+from numba import jit, njit, types
 from numba.typed import Dict
-
-
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("image_path", type=str)
-    parser.add_argument("rotate_angle", type=float)
-    parser.add_argument(
-        "interpolation_method", type=str, choices=["bilinear", "nearest"]
-    )
-
-    args = parser.parse_args()
-    return args
 
 
 @njit(cache=True)
@@ -114,6 +101,14 @@ def _extend_rect_vertices(rect_vertices):
 
 @njit(cache=True)
 def _is_within_rect(x_point, y_point, rect_vertices):
+    """检测原图中的点经过变换后是否在新图像有效区域内部
+    Args:
+        x_point:        int, 为新图像上的一个点的x坐标
+        y_point:        int, 为新图像上的一个点的y坐标
+        rect_vertices： list(tuple(x1,y1),...) 原图的四个顶点在新图像的对应坐标
+    Returns:
+        True or False
+    """
     assert len(rect_vertices) == 4
     assert len(rect_vertices[0]) == 2
 
@@ -171,6 +166,21 @@ def imrotate(image, angle, method):
     return new_image
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="将给定图像进行旋转变换")
+    parser.add_argument("image_path", type=str, help="待处理图像的地址")
+    parser.add_argument("rotate_angle", type=float, help="图像旋转的角度, 单位为度(°)")
+    parser.add_argument(
+        "interpolation_method",
+        type=str,
+        choices=["bilinear", "nearest"],
+        help="选用的差值方式, 双线性差值: bilinear, 和最近邻差值: nearest",
+    )
+
+    args = parser.parse_args()
+    return args
+
+
 def main():
     args = parse_args()
     image = imgplt.imread(args.image_path)
@@ -189,4 +199,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
