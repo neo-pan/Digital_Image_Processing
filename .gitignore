@@ -106,6 +106,7 @@ venv.bak/
 # image files
 *.jpg
 *.png
+*.tiff
 
 # vscode files
 .vscode/
@@ -113,3 +114,4 @@ venv.bak/
 # line_profiler report
 *.lprof
 
+*.zip
