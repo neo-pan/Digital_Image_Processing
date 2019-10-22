@@ -3,7 +3,7 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 from cv2 import cv2
-from numba import jit, njit
+from numba import njit
 
 HISTOGRAM_ALPHA = 0.5
 DISCRETE_VALUE_NUM = 256
@@ -13,11 +13,12 @@ COLORS = ["red", "green", "blue", "black"]
 @njit(cache=True)
 def get_hist(image):
     """获取图像灰度值出现频数的统计数据
+
     Args:
-        image:  numpy数组, shape为(H,W,C)-(长, 宽, 通道数), 
+        image:  numpy数组, shape为(H,W,C)-(长, 宽, 通道数),
                 数组中数据代表相应位置上的灰度值
     Returns:
-        hist:   numpy数组, shape为(C,256)-(通道数, 8位离散灰度值总数)，
+        hist:   numpy数组, shape为(C,256)-(通道数, 8位离散灰度值总数),
                 数组中数据代表相应灰度值在图像中出现的频数
     """
     assert len(image.shape) == 3
@@ -36,7 +37,8 @@ def get_hist(image):
 @njit(cache=True)
 def _one_dim_hist_normalize(hist):
     """对单个通道的直方图数据进行归一化
-    Args: 
+
+    Args:
         hist:       numpy数组, shape为(256, )-(8位离散灰度值总数, )，
                     数组中数据代表相应灰度值在图像中出现的频数
     Returns:
@@ -52,7 +54,8 @@ def _one_dim_hist_normalize(hist):
 @njit(cache=True)
 def _one_dim_hist_prob_sum(hist):
     """对单个通道的直方图数据进行累计求和
-    Args: 
+
+    Args:
         hist:       numpy数组, shape为(256, )-(8位离散灰度值总数, )，
                     数组中数据代表相应灰度值在图像中出现的频数
     Returns:
@@ -69,7 +72,8 @@ def _one_dim_hist_prob_sum(hist):
 @njit(cache=True)
 def _one_dim_hist_equlize(hist):
     """对单个通道的直方图数据进行均衡化
-    Args: 
+
+    Args:
         hist:       numpy数组, shape为(256, )-(8位离散灰度值总数, )，
                     数组中数据代表相应灰度值在图像中出现的频数
     Returns:
@@ -87,7 +91,8 @@ def _one_dim_hist_equlize(hist):
 @njit(cache=True)
 def _one_dim_hist_specify(source_hist, target_hist):
     """对单个通道的直方图数据进行规定化
-    Args: 
+
+    Args:
         source_hist:numpy数组, shape为(256, )-(8位离散灰度值总数, )，
                     数组中数据代表相应灰度值在源图像中出现的频数
         target_hist:numpy数组, shape为(256, )-(8位离散灰度值总数, )，
@@ -114,13 +119,14 @@ def _one_dim_hist_specify(source_hist, target_hist):
 @njit(cache=True)
 def image_match_histmap(image, histmap):
     """使图像根据特定的灰度值映射进行匹配
+
     Args:
-        image:      numpy数组, shape为(H,W,C)-(长, 宽, 通道数), 
+        image:      numpy数组, shape为(H,W,C)-(长, 宽, 通道数),
                     数组中数据代表相应位置上的灰度值
-        hist_map:   numpy数组, shape为(C, 256)-(通道数, 8位离散灰度值总数)，
+        hist_map:   numpy数组, shape为(C, 256)-(通道数, 8位离散灰度值总数),
                     数组中数据代表相应灰度值在映射关系中对应的灰度值
     Returns：
-        result:     numpy数组, shape为(H,W,C)-(长, 宽, 通道数), 
+        result:     numpy数组, shape为(H,W,C)-(长, 宽, 通道数),
                     数组中数据代表变换后新图像相应位置上的灰度值
     """
     assert histmap.ndim == 2
@@ -141,11 +147,12 @@ def image_match_histmap(image, histmap):
 @njit(cache=True)
 def hist_equlize(hist):
     """对多通道的直方图数据进行规定化
-    Args: 
-        hist:       numpy数组, shape为(C,256)-(通道数, 8位离散灰度值总数)，
+
+    Args:
+        hist:       numpy数组, shape为(C,256)-(通道数, 8位离散灰度值总数),
                     数组中数据代表相应灰度值在图像中出现的频数
     Returns:
-        hist_map:  numpy数组, shape为(C,256)-(通道数, 8位离散灰度值总数)，
+        hist_map:  numpy数组, shape为(C,256)-(通道数, 8位离散灰度值总数),
                     数组中数据代表相应灰度值在均衡化后对应的灰度值
     """
     assert hist.ndim == 2
@@ -160,13 +167,14 @@ def hist_equlize(hist):
 @njit(cache=True)
 def hist_specify(source_hist, target_hist):
     """对多通道的直方图数据进行规定化
-    Args: 
-        source_hist:numpy数组, shape为(C,256)-(通道数, 8位离散灰度值总数)，
+
+    Args:
+        source_hist:numpy数组, shape为(C,256)-(通道数, 8位离散灰度值总数),
                     数组中数据代表相应灰度值在源图像中出现的频数
-        target_hist:numpy数组, shape为(C,256)-(通道数, 8位离散灰度值总数)，
+        target_hist:numpy数组, shape为(C,256)-(通道数, 8位离散灰度值总数),
                     数组中数据代表相应灰度值在目标图像中出现的频数
     Returns:
-        hist_map:  numpy数组, shape为(C,256)-(通道数, 8位离散灰度值总数)，
+        hist_map:  numpy数组, shape为(C,256)-(通道数, 8位离散灰度值总数),
                     数组中数据代表相应灰度值在均衡化后对应的灰度值
     """
     assert source_hist.ndim == target_hist.ndim == 2
@@ -181,11 +189,12 @@ def hist_specify(source_hist, target_hist):
 
 def image_hist_equlize(image):
     """对图像进行直方图均衡化
+
     Args:
-        image:      numpy数组, shape为(H,W,C)-(长, 宽, 通道数), 
+        image:      numpy数组, shape为(H,W,C)-(长, 宽, 通道数),
                     数组中数据代表相应位置上的灰度值
     Returns：
-        result:     numpy数组, shape为(H,W,C)-(长, 宽, 通道数), 
+        result:     numpy数组, shape为(H,W,C)-(长, 宽, 通道数),
                     数组中数据代表均衡化后新图像相应位置上的灰度值
     """
     hist_map = hist_equlize(get_hist(image))
@@ -196,13 +205,14 @@ def image_hist_equlize(image):
 
 def image_hist_specifiy(source_image, target_image):
     """对图像进行直方图规定化
+
     Args:
-        source_image:   numpy数组, shape为(H,W,C)-(长, 宽, 通道数), 
+        source_image:   numpy数组, shape为(H,W,C)-(长, 宽, 通道数),
                         数组中数据代表源图像相应位置上的灰度值
-        target_image:   numpy数组, shape为(H,W,C)-(长, 宽, 通道数), 
+        target_image:   numpy数组, shape为(H,W,C)-(长, 宽, 通道数),
                         数组中数据代表目标图像相应位置上的灰度值
     Returns：
-        result:         numpy数组, shape为(H,W,C)-(长, 宽, 通道数), 
+        result:         numpy数组, shape为(H,W,C)-(长, 宽, 通道数),
                         数组中数据代表规定化后新图像相应位置上的灰度值
     """
     hist_map = hist_specify(get_hist(source_image), get_hist(target_image))

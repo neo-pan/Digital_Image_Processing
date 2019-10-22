@@ -4,8 +4,7 @@ import math
 import matplotlib.image as imgplt
 import matplotlib.pyplot as plt
 import numpy as np
-from numba import jit, njit, types
-from numba.typed import Dict
+from numba import njit, types
 
 
 @njit(cache=True)
