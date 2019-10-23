@@ -8,8 +8,11 @@ from matplotlib import cm
 from numba import  njit
 
 
+# 4-邻域
 FOUR_NEIGHBOURS = ((1, 0), (-1, 0), (0, 1), (0, -1))
+# 8-邻域
 EIGHT_NEIGHBOURS = FOUR_NEIGHBOURS + ((1, 1), (1, -1), (-1, 1), (-1, -1))
+# 前景像素值
 FOREGROUND_VALUE = 255
 
 
@@ -60,7 +63,7 @@ def _is_within_rect(shape, point):
 
 @njit(cache=True)
 def get_neighbours_indecis(shape, point, n=None):
-    """得到图中某一点的4-邻接或8-邻接节点坐标
+    """得到图中某一点的4-邻域或8-邻域点坐标
     """
     assert len(shape) == len(point) == 2
     if n is None:
@@ -110,10 +113,8 @@ def image_pre_process(image):
         count = np.bincount(image.ravel())
         if count[0] + count[-1] == image.size:
             return image
-    # 把输入图像灰度化
-    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
     # 对输入的单通道矩阵逐像素进行阈值分割
-    ret, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_TRIANGLE)
+    ret, binary = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_TRIANGLE)
     print("threshold value {}".format(ret))
 
     return binary
@@ -133,26 +134,39 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="""对给定的二值图像进行区域标记, 
         若给定图像并非二值图像, 则先根据全局阈值对其进行二值化处理
-        注意: 二值图像中 0 应代表背景, 255 应代表前景
+        注意: 二值图像中默认 0 为背景, 255 为前景
         """
     )
     parser.add_argument("image_path", type=str, help="待处理图像的地址")
     parser.add_argument(
-        "-n", type=int, choices=[4, 8], default=4, help="考虑的邻接区域, 4-邻接或8-邻接, 默认为4"
+        "-n", type=int, choices=[4, 8], default=4, help="考虑的邻接区域, 4-邻域或8-邻域, 默认为4"
+    )
+    parser.add_argument(
+        "-fg",
+        "--foreground_value",
+        type=int,
+        choices=[0, 255],
+        default=255,
+        help="前景像素值, 默认为255",
     )
     args = parser.parse_args()
     return args
 
 
 def main():
+    global FOREGROUND_VALUE
     args = parse_args()
+    FOREGROUND_VALUE = args.foreground_value
 
-    image = image_pre_process(cv2.imread(args.image_path))
-
+    image = cv2.imread(args.image_path, cv2.IMREAD_GRAYSCALE)
+    image = image_pre_process(image)
+    
     plt.figure("Binary Image")
     plt.imshow(image, cmap="gray")
     plt.axis("off")
     label_mask = region_label(image, n=args.n)
+
+    print("region numbers: {}".format(np.max(label_mask)))
 
     cmap = generate_color_map(np.max(label_mask))
     plt.figure("Region Label")
