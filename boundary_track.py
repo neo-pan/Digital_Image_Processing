@@ -2,15 +2,18 @@ import argparse
 
 import matplotlib
 import matplotlib.pyplot as plt
+import numba
 import numpy as np
+from pprint import pprint
 from cv2 import cv2
 from numba import njit
 from numba.typed import List
 
+from region_label import generate_color_map, region_label
 
 # 前景像素值
 FOREGROUND_VALUE = 255
-# 顺时针追踪顺序
+# 顺时针8-邻域追踪顺序
 # -------------
 # | 5 | 6 | 7 |
 # -------------
@@ -18,11 +21,29 @@ FOREGROUND_VALUE = 255
 # -------------
 # | 3 | 2 | 1 |
 # -------------
-TRACK_DIRS = ((0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1), (-1, 0), (-1, 1))
+EIGHT_TRACK_DIRS = (
+    (0, 1),
+    (1, 1),
+    (1, 0),
+    (1, -1),
+    (0, -1),
+    (-1, -1),
+    (-1, 0),
+    (-1, 1),
+)
+# 顺时针4-邻域追踪顺序
+# -------------
+# |   | 1 |   |
+# -------------
+# | 2 | x | 0 |
+# -------------
+# |   | 3 |   |
+# -------------
+FOUR_TRACK_DIRS = ((0, 1), (-1, 0), (0, -1), (1, 0))
 
 
 @njit(cache=True)
-def boundary_track(image):
+def boundary_track(image, n=8):
     """对二值图像进行区域外边界跟踪, 要求区域内部无孔洞
     """
     # 确保为二值化图像
@@ -30,60 +51,69 @@ def boundary_track(image):
     assert image.ndim == 2
     count = np.bincount(image.ravel())
     assert count[0] + count[-1] == image.size
-    boundaries = List()
+    # 获取区域标记
+    assert n in [4, 8]
+    label_mask = region_label(image, n=n)
+    num_regions = np.max(label_mask)
+    region_tracked = np.zeros((num_regions,), dtype=np.int8)
+
     # numba.typed.List 需要提前指定其内部元素类型
-    boundaries.append((-1, -1))
+    boundary = List()
+    boundaries = List()
+    boundary.append((-1, -1))
+    boundaries.append(list(boundary))
+    boundary.clear()
+    boundaries.clear()
 
     height = image.shape[0]
     width = image.shape[1]
-    inside_boundary = False
+
+    # np.pad(image, 1, "constant", constant_values=0)
 
     for i in range(height):
         for j in range(width):
-            if (i, j) in boundaries:
-                # 若经过边界点, inside_boundary 标记为 True
-                inside_boundary = True
-            if image[i, j] != FOREGROUND_VALUE:
-                # 若经过背景点, inside_boundary 标记为 False
-                inside_boundary = False
-            if image[i, j] == FOREGROUND_VALUE and not inside_boundary:
-                # 若开始追踪某条边界, inside_boundary 标记为 False
-                inside_boundary = True
+            label = label_mask[i, j]
+            if label != 0 and region_tracked[label - 1] == 0:
                 P0 = (i, j)
-                P1, direct = track_next(image, boundaries, point=P0, direct=0)
+                P1, direct = track_next(image, boundary, point=P0, direct=0, n=n)
                 P_n = P1
                 P_n_pre = P_n
-                while True:
+                while not (P_n == P1 and P_n_pre == P0):
                     P_n_pre = P_n
-                    P_n, direct = track_next(image, boundaries, P_n_pre, direct)
-                    if P_n == P1 and P_n_pre == P0:
-                        # plot_image_with_boundaries(image, np.array(boundaries[1:]))
-                        # plt.show()
-                        break
-            if j == width - 1:
-                # 若进行换行, inside_boundary 标记为 False
-                inside_boundary = False
+                    P_n, direct = track_next(image, boundary, P_n_pre, direct, n)
+
+                region_tracked[label - 1] = 1
+                boundaries.append(list(boundary.copy()))
+                boundary.clear()
     # 返回时去除最初加入的 (-1, -1)
-    return boundaries[1:]
+    return list(boundaries)
 
 
 @njit(cache=True)
-def track_next(image, boundaries, point, direct):
+def track_next(image, boundary, point, direct, n):
     """从给定点开始, 在其8-邻域中跟踪下一个边界点
     """
-    boundaries.append((point[0], point[1]))
-    if direct % 2 == 0:
-        direct = (direct + 7) % 8
+    assert n in [4, 8]
+    boundary.append((point[0], point[1]))
+    if n == 4:
+        direct = (direct + 3) % n
     else:
-        direct = (direct + 6) % 8
-    for _ in range(8):
-        n_point = np.add(np.array(point), np.array(TRACK_DIRS[direct % 8]))
+        if direct % 2 == 0:
+            direct = (direct + (n - 1)) % n
+        else:
+            direct = (direct + (n - 2)) % n
+
+    for _ in range(n):
+        if n == 4:
+            n_point = np.add(np.array(point), np.array(FOUR_TRACK_DIRS[direct % n]))
+        else:
+            n_point = np.add(np.array(point), np.array(EIGHT_TRACK_DIRS[direct % n]))
         if _is_within_rect(image.shape, n_point):
             if image[n_point[0], n_point[1]] == FOREGROUND_VALUE:
-                return (n_point[0], n_point[1]), direct % 8
+                return (n_point[0], n_point[1]), direct % n
         direct += 1
     # 若区域仅一个像素, 返回该点自身 #! 应通过形态学处理消除仅有一个像素的点
-    return (point[0], point[1]), 7
+    return (point[0], point[1]), 0
 
 
 @njit(cache=True)
@@ -99,6 +129,8 @@ def _is_within_rect(shape, point):
 
 
 def plot_image_with_boundaries(image, boundaries, title=""):
+    boundaries = np.vstack([np.asarray(boundary) for boundary in boundaries])
+    
     boundary_mask = np.zeros_like(image)
     boundary_mask[boundaries[:, 0], boundaries[:, 1]] = 255
     # 将 boundary_mask 转化为4通道图像, 增加透明度通道便于叠加显示
@@ -116,10 +148,11 @@ def plot_image_with_boundaries(image, boundaries, title=""):
     plt.axis("off")
 
 
-def image_pre_process(image):
+def image_pre_process(image, foreground_value=None):
     """将图像进行二值化处理
     """
     # 对输入的单通道矩阵逐像素进行阈值分割
+    assert foreground_value in [None, 0, 255]
     count = np.bincount(image.ravel())
     if count[0] + count[-1] != image.size:
         ret, image = cv2.threshold(
@@ -127,19 +160,11 @@ def image_pre_process(image):
         )
         print("threshold value {}".format(ret))
 
-    # 进行泛洪填充消除内部孔洞
-    if FOREGROUND_VALUE == 0:
+    if foreground_value is not None and foreground_value == 0:
         # 若前景为0, 做反色处理
         image = cv2.bitwise_not(image)
-    img_floodfill = image.copy()
-    h, w = image.shape
-    mask = np.zeros((h + 2, w + 2), np.uint8)
-    cv2.floodFill(img_floodfill, mask, (0, 0), 255)
-    img_floodfill_inv = cv2.bitwise_not(img_floodfill)
-    img_out = image | img_floodfill_inv
-    if FOREGROUND_VALUE == 0:
-        img_out = cv2.bitwise_not(img_out)
-    return img_out
+
+    return image
 
 
 def parse_args():
@@ -151,6 +176,9 @@ def parse_args():
         """
     )
     parser.add_argument("image_path", type=str, help="待处理图像的地址")
+    parser.add_argument(
+        "-n", type=int, choices=[4, 8], default=8, help="考虑的边界邻接区域, 4-邻域或8-邻域, 默认为8"
+    )
     parser.add_argument(
         "-fg",
         "--foreground_value",
@@ -165,21 +193,18 @@ def parse_args():
 
 
 def main():
-    global FOREGROUND_VALUE
     args = parse_args()
-    FOREGROUND_VALUE = args.foreground_value
     image = cv2.imread(args.image_path, cv2.IMREAD_GRAYSCALE)
-    plt.figure("Binary Image")
+    plt.figure("Source Image")
     plt.imshow(image, cmap="gray")
     plt.axis("off")
 
-    processed_image = image_pre_process(image)
-    boundaries = boundary_track(processed_image)
-    boundaries = np.array(boundaries)
+    image = image_pre_process(image, args.foreground_value)
 
-    print(boundaries)
-    plot_image_with_boundaries(image, boundaries, "Source Image with")
-    plot_image_with_boundaries(processed_image, boundaries, "Processed Image with")
+    boundaries = boundary_track(image, n=args.n)
+    pprint(boundaries, compact=True)
+    
+    plot_image_with_boundaries(image, boundaries, "Binary Image with")
 
     plt.show()
 

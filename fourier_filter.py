@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy import fft
 from cv2 import cv2
-from numba import jit, njit
+from numba import njit
 from pprint import pprint
 
 def low_pass_filter(image, width=0.1):

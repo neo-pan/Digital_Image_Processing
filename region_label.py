@@ -106,18 +106,22 @@ def pixel_label(image, label_mask, point, region_id, n=None):
     return valid_neighbors
 
 
-def image_pre_process(image):
+def image_pre_process(image, foreground_value=None):
     """将图像进行二值化处理
     """
-    if image.ndim == 2:
-        count = np.bincount(image.ravel())
-        if count[0] + count[-1] == image.size:
-            return image
     # 对输入的单通道矩阵逐像素进行阈值分割
-    ret, binary = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_TRIANGLE)
-    print("threshold value {}".format(ret))
+    assert foreground_value in [None, 0, 255]
+    count = np.bincount(image.ravel())
+    if count[0] + count[-1] != image.size:
+        ret, image = cv2.threshold(
+            image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_TRIANGLE
+        )
+        print("threshold value {}".format(ret))
+    
+    if foreground_value is not None and foreground_value == 0:
+        image = cv2.bitwise_not(image)
 
-    return binary
+    return image
 
 
 def generate_color_map(MAX_CLASSES_NUM):
@@ -154,12 +158,9 @@ def parse_args():
 
 
 def main():
-    global FOREGROUND_VALUE
     args = parse_args()
-    FOREGROUND_VALUE = args.foreground_value
-
     image = cv2.imread(args.image_path, cv2.IMREAD_GRAYSCALE)
-    image = image_pre_process(image)
+    image = image_pre_process(image, args.foreground_value)
     
     plt.figure("Binary Image")
     plt.imshow(image, cmap="gray")
