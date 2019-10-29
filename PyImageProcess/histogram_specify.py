@@ -1,4 +1,5 @@
 import argparse
+import os
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -263,7 +264,6 @@ def plot_image_and_hist(image, title):
     """
     plt.figure("{} Image".format(title))
     plt.imshow(image.squeeze(), cmap="gray")
-    plt.axis("off")
     plot_hist(get_hist(image), "{} Histogram".format(title))
 
 
@@ -298,6 +298,8 @@ def image_preprocess(image):
 
 def main():
     args = parse_args()
+    # 检验图像路径是否可用
+    assert os.path.exists(args.image_path), "图像不存在"
     if args.task == "equalize":
         assert args.source_path is not None
         source_image = image_preprocess(

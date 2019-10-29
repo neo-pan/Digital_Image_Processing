@@ -1,4 +1,5 @@
 import argparse
+import os
 
 import matplotlib.colors
 import matplotlib.pyplot as plt
@@ -159,12 +160,13 @@ def parse_args():
 
 def main():
     args = parse_args()
+    # 检验图像路径是否可用
+    assert os.path.exists(args.image_path), "图像不存在"
     image = cv2.imread(args.image_path, cv2.IMREAD_GRAYSCALE)
     image = image_preprocess(image, args.foreground_value)
     
     plt.figure("Binary Image")
     plt.imshow(image, cmap="gray")
-    plt.axis("off")
     label_mask = region_label(image, n=args.n)
 
     print("region numbers: {}".format(np.max(label_mask)))
@@ -172,7 +174,6 @@ def main():
     cmap = generate_color_map(np.max(label_mask))
     plt.figure("Region Label")
     plt.imshow(label_mask, cmap=cmap)
-    plt.axis("off")
     plt.show()
 
 

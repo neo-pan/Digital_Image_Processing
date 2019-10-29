@@ -143,12 +143,13 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
+    # 检验图像路径是否可用
+    assert os.path.exists(args.image_path), "图像不存在"
     image = cv2.imread(args.image_path)
     image = image_preprocess(image)
 
     plt.figure("Source Image")
     plt.imshow(image, cmap="gray")
-    plt.axis("off")
 
     if args.filter in ["low_pass", "high_pass"]:
         result = fourier_filter(image, args.filter, width=args.width)
@@ -164,6 +165,5 @@ if __name__ == "__main__":
 
     plt.figure("Filtered Image")
     plt.imshow(result, cmap="gray")
-    plt.axis("off")
 
     plt.show()

@@ -1,16 +1,11 @@
 import argparse
 import math
+import os
 
 import matplotlib.image as imgplt
 import matplotlib.pyplot as plt
 import numpy as np
 from numba import njit, types
-
-
-@njit(cache=True)
-def cross_product(vec_1, vec_2):
-    assert len(vec_1) == len(vec_2) == 2
-    return vec_1[0] * vec_2[0] + vec_1[1] * vec_2[1]
 
 
 @njit(cache=True)
@@ -43,8 +38,8 @@ def bilinear_interpolation(image, f_x, f_y):
     y_0 = int(y_0)
     y_1 = y_0 + 1
 
-    value_y_1 = (f_x - x_0) * image[x_1, y_1, :] + (x_1 - f_x) * image[x_0, y_1, :]
-    value_y_0 = (f_x - x_0) * image[x_1, y_0, :] + (x_1 - f_x) * image[x_0, y_0, :]
+    value_y_1 = (f_x - x_0) * image[x_1, y_1] + (x_1 - f_x) * image[x_0, y_1]
+    value_y_0 = (f_x - x_0) * image[x_1, y_0] + (x_1 - f_x) * image[x_0, y_0]
     value = (f_y - y_0) * value_y_1 + (y_1 - f_y) * value_y_0
 
     return value
@@ -71,7 +66,7 @@ def nearest_neighbor_interpolation(image, f_x, f_y):
     elif y >= width:
         y = width - 1
 
-    return image[x, y, :]
+    return image[x, y]
 
 
 @njit(cache=True)
@@ -81,8 +76,8 @@ def _get_origin(width, height):
 
 @njit(cache=True)
 def _get_rotated_coord(x, y, theta):
-    rX = x * math.cos(theta) + y * math.sin(theta)
-    rY = -x * math.sin(theta) + y * math.cos(theta)
+    rX = x * math.cos(theta) - y * math.sin(theta)
+    rY = x * math.sin(theta) + y * math.cos(theta)
     return rX, rY
 
 
@@ -96,28 +91,6 @@ def _extend_rect_vertices(rect_vertices):
     x_3, y_3 = -x_1, -y_1
     rect_vertices.append((x_2, y_2))
     rect_vertices.append((x_3, y_3))
-
-
-@njit(cache=True)
-def _is_within_rect(x_point, y_point, rect_vertices):
-    """检测原图中的点经过变换后是否在新图像有效区域内部
-    Args:
-        x_point:        int, 为新图像上的一个点的x坐标
-        y_point:        int, 为新图像上的一个点的y坐标
-        rect_vertices： list(tuple(x1,y1),...) 原图的四个顶点在新图像的对应坐标
-    Returns:
-        True or False
-    """
-    assert len(rect_vertices) == 4
-    assert len(rect_vertices[0]) == 2
-
-    for i in range(len(rect_vertices)):
-        x, y = rect_vertices[i]
-        x_prime, y_prime = rect_vertices[(i + 1) % len(rect_vertices)]
-        product = cross_product((x_point - x, y_point - y), (x_prime - x, y_prime - y))
-        if product < 0:
-            return False
-    return True
 
 
 @njit(cache=True)
@@ -160,13 +133,13 @@ def imrotate(image, angle, method):
                 x_old + x_origin, y_old + y_origin, height, width
             ):
                 if method in methods:
-                    new_image[x, y, :] = methods[method](image, x_old, y_old)
+                    new_image[x, y] = methods[method](image, x_old, y_old)
 
     return new_image
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="将给定图像进行旋转变换")
+    parser = argparse.ArgumentParser(description="将给定图像进行逆时针旋转变换")
     parser.add_argument("image_path", type=str, help="待处理图像的地址")
     parser.add_argument("rotate_angle", type=float, help="图像旋转的角度, 单位为度(°)")
     parser.add_argument(
@@ -182,17 +155,18 @@ def parse_args():
 
 def main():
     args = parse_args()
+    # 检验图像路径是否可用
+    assert os.path.exists(args.image_path), "图像不存在"
     image = imgplt.imread(args.image_path)
 
     plt.figure("Original Image")
-    plt.imshow(image)
-    plt.axis("off")
+    plt.imshow(image, cmap="gray")
 
     image = imrotate(image, args.rotate_angle, args.interpolation_method)
 
     plt.figure("Rotated Image")
-    plt.imshow(image)
-    plt.axis("off")
+    plt.imshow(image, cmap="gray")
+
     plt.show()
 
 

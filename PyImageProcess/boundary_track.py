@@ -1,10 +1,11 @@
 import argparse
+import os
+from pprint import pprint
 
 import matplotlib
 import matplotlib.pyplot as plt
 import numba
 import numpy as np
-from pprint import pprint
 from cv2 import cv2
 from numba import njit
 from numba.typed import List
@@ -64,7 +65,6 @@ def boundary_track(image, n=8):
     boundary.append((-1, -1))
     boundaries.append(list(boundary))
     boundary.clear()
-    boundaries.clear()
 
     height = image.shape[0]
     width = image.shape[1]
@@ -87,7 +87,7 @@ def boundary_track(image, n=8):
                 boundaries.append(list(boundary.copy()))
                 boundary.clear()
     # 返回时去除最初加入的 (-1, -1)
-    return list(boundaries)
+    return list(boundaries[1:])
 
 
 @njit(cache=True)
@@ -146,7 +146,6 @@ def plot_image_with_boundaries(image, boundaries, title=""):
     plt.figure("{} Boundaries".format(title))
     plt.imshow(image, cmap="gray")
     plt.imshow(boundary_mask)
-    plt.axis("off")
 
 
 def image_preprocess(image, foreground_value=None):
@@ -194,15 +193,21 @@ def parse_args():
 
 def main():
     args = parse_args()
+    # 检验图像路径是否可用
+    assert os.path.exists(args.image_path), "图像不存在"
     image = cv2.imread(args.image_path, cv2.IMREAD_GRAYSCALE)
     plt.figure("Source Image")
     plt.imshow(image, cmap="gray")
-    plt.axis("off")
 
     image = image_preprocess(image, args.foreground_value)
 
     boundaries = boundary_track(image, n=args.n)
-    pprint(boundaries, compact=True)
+    for i, boundary in enumerate(boundaries):
+        print(f"Boundary {i+1}")
+        pprint(boundary, compact=True)
+        # 为节省运行时间, 仅打印前5条边界点坐标供展示
+        if i >= 4:
+            break
     
     plot_image_with_boundaries(image, boundaries, "Binary Image with")
 

@@ -1,6 +1,2 @@
 argparse
-opencv-python
-matplotlib
-numpy
-numba
 pprint
