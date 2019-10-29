@@ -282,7 +282,7 @@ def parse_args():
     return args
 
 
-def image_pre_process(image):
+def image_preprocess(image):
     if image.ndim == 2:
         # 单通道图像数组增加一个维度以满足后续处理函数要求
         image = image[:, :, np.newaxis]
@@ -300,7 +300,7 @@ def main():
     args = parse_args()
     if args.task == "equalize":
         assert args.source_path is not None
-        source_image = image_pre_process(
+        source_image = image_preprocess(
             cv2.imread(args.source_path, cv2.IMREAD_UNCHANGED)
         )
         plot_image_and_hist(source_image, "Source")
@@ -308,10 +308,10 @@ def main():
 
     elif args.task == "specify":
         assert args.source_path is not None and args.target_path is not None
-        source_image = image_pre_process(
+        source_image = image_preprocess(
             cv2.imread(args.source_path, cv2.IMREAD_UNCHANGED)
         )
-        target_image = image_pre_process(
+        target_image = image_preprocess(
             cv2.imread(args.target_path, cv2.IMREAD_UNCHANGED)
         )
         assert source_image.shape[-1] == target_image.shape[-1], "源图像与目标图像通道数需要相同！"

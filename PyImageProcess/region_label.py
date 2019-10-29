@@ -106,7 +106,7 @@ def pixel_label(image, label_mask, point, region_id, n=None):
     return valid_neighbors
 
 
-def image_pre_process(image, foreground_value=None):
+def image_preprocess(image, foreground_value=None):
     """将图像进行二值化处理
     """
     # 对输入的单通道矩阵逐像素进行阈值分割
@@ -160,7 +160,7 @@ def parse_args():
 def main():
     args = parse_args()
     image = cv2.imread(args.image_path, cv2.IMREAD_GRAYSCALE)
-    image = image_pre_process(image, args.foreground_value)
+    image = image_preprocess(image, args.foreground_value)
     
     plt.figure("Binary Image")
     plt.imshow(image, cmap="gray")

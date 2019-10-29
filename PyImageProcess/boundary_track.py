@@ -11,7 +11,7 @@ from numba.typed import List
 
 from region_label import generate_color_map, region_label
 
-# 前景像素值
+# 默认的前景像素值
 FOREGROUND_VALUE = 255
 # 顺时针8-邻域追踪顺序
 # -------------
@@ -44,7 +44,7 @@ FOUR_TRACK_DIRS = ((0, 1), (-1, 0), (0, -1), (1, 0))
 
 @njit(cache=True)
 def boundary_track(image, n=8):
-    """对二值图像进行区域外边界跟踪, 要求区域内部无孔洞
+    """对二值图像进行区域外边界跟踪
     """
     # 确保为二值化图像
     # assert image.dtype == np.uint8  #! numba 优化后无法正常判断
@@ -55,6 +55,7 @@ def boundary_track(image, n=8):
     assert n in [4, 8]
     label_mask = region_label(image, n=n)
     num_regions = np.max(label_mask)
+    # 用于标记该区域的边界是否已被跟踪
     region_tracked = np.zeros((num_regions,), dtype=np.int8)
 
     # numba.typed.List 需要提前指定其内部元素类型
@@ -91,7 +92,7 @@ def boundary_track(image, n=8):
 
 @njit(cache=True)
 def track_next(image, boundary, point, direct, n):
-    """从给定点开始, 在其8-邻域中跟踪下一个边界点
+    """从给定点开始, 在其邻域中跟踪下一个边界点
     """
     assert n in [4, 8]
     boundary.append((point[0], point[1]))
@@ -112,7 +113,7 @@ def track_next(image, boundary, point, direct, n):
             if image[n_point[0], n_point[1]] == FOREGROUND_VALUE:
                 return (n_point[0], n_point[1]), direct % n
         direct += 1
-    # 若区域仅一个像素, 返回该点自身 #! 应通过形态学处理消除仅有一个像素的点
+    # 若区域仅一个像素, 返回该点自身
     return (point[0], point[1]), 0
 
 
@@ -136,10 +137,10 @@ def plot_image_with_boundaries(image, boundaries, title=""):
     # 将 boundary_mask 转化为4通道图像, 增加透明度通道便于叠加显示
     boundary_mask = np.dstack(
         (
-            boundary_mask - boundary_mask + 255,  # R
-            255 - boundary_mask,  # G
-            255 - boundary_mask,  # B
-            boundary_mask,  # A
+            boundary_mask - boundary_mask + 255,    # R
+            255 - boundary_mask,                    # G
+            255 - boundary_mask,                    # B
+            boundary_mask,                          # A
         )
     )
     plt.figure("{} Boundaries".format(title))
@@ -148,7 +149,7 @@ def plot_image_with_boundaries(image, boundaries, title=""):
     plt.axis("off")
 
 
-def image_pre_process(image, foreground_value=None):
+def image_preprocess(image, foreground_value=None):
     """将图像进行二值化处理
     """
     # 对输入的单通道矩阵逐像素进行阈值分割
@@ -171,7 +172,6 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="""对给定的二值图像进行边界追踪(外边界),
         若给定图像并非二值图像, 则先根据全局阈值对其进行二值化处理
-        预处理过程将去除图像区域内部孔洞
         注意: 二值图像中默认 0 为背景, 255 为前景
         """
     )
@@ -199,7 +199,7 @@ def main():
     plt.imshow(image, cmap="gray")
     plt.axis("off")
 
-    image = image_pre_process(image, args.foreground_value)
+    image = image_preprocess(image, args.foreground_value)
 
     boundaries = boundary_track(image, n=args.n)
     pprint(boundaries, compact=True)
