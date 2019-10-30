@@ -1,9 +1,11 @@
 import argparse
+import os
 
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy import fft
-from cv2 import cv2
+
 from spatial_filter import get_average_kernel, get_gaussian_kernel, get_laplacian_kernel
 
 
@@ -112,10 +114,12 @@ def parse_args():
         type=str,
         choices=["low_pass", "high_pass", "kernel"],
         required=True,
-        help="""选择傅里叶滤波器类别,
+        help="""
+        选择傅里叶滤波器类别,
         low_pass: 简单的频域低通滤波 (圆形mask),
         high_pass: 简单的频域高通滤波 (圆形mask), 
-        kernel: 使用给定的空域kernel进行傅里叶滤波""",
+        kernel: 使用给定的空域kernel进行傅里叶滤波
+        """,
     )
     parser.add_argument(
         "-k",
@@ -123,11 +127,13 @@ def parse_args():
         type=str,
         choices=["average", "gaussian", "laplacian"],
         default=None,
-        help="""选择空域kernel类别, 当--filter不为'kernel'时该项设置无效
-        average: 邻域平均模板, 形状为7x7
-        gaussian: 高斯模板, 形状为7x7, sigma为1
-        laplacian: 拉普拉斯模板, 形状为3x3，
-        注意: kernel具体参数暂时无法由命令行输入, 修改需自行编码""",
+        help="""
+        选择空域kernel类别, 当--filter不为'kernel'时该项设置无效.
+        average: 邻域平均模板, 形状为7x7,
+        gaussian: 高斯模板, 形状为7x7, sigma为1,
+        laplacian: 拉普拉斯模板, 形状为3x3,
+        注意: kernel具体参数暂时无法由命令行输入, 修改需自行编码 
+        """,
     )
     parser.add_argument(
         "-w",
@@ -148,9 +154,10 @@ if __name__ == "__main__":
     image = cv2.imread(args.image_path)
     image = image_preprocess(image)
 
-    plt.figure("Source Image")
+    plt.figure()
+    plt.subplot(121)
     plt.imshow(image, cmap="gray")
-
+    plt.title("Source Image")
     if args.filter in ["low_pass", "high_pass"]:
         result = fourier_filter(image, args.filter, width=args.width)
     elif args.filter == "kernel":
@@ -163,7 +170,8 @@ if __name__ == "__main__":
             kernel = get_laplacian_kernel()
         result = fourier_filter(image, args.filter, kernel=kernel)
 
-    plt.figure("Filtered Image")
+    plt.subplot(122)
     plt.imshow(result, cmap="gray")
-
+    plt.title("Filtered Image")
+ 
     plt.show()

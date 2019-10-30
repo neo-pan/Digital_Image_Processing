@@ -1,0 +1,7 @@
+argparse
+matplotlib
+numpy
+numba
+opencv-python
+pillow
+pprint

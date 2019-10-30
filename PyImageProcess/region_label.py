@@ -1,13 +1,12 @@
 import argparse
 import os
 
+import cv2
 import matplotlib.colors
 import matplotlib.pyplot as plt
 import numpy as np
-from cv2 import cv2
 from matplotlib import cm
-from numba import  njit
-
+from numba import njit
 
 # 4-邻域
 FOUR_NEIGHBOURS = ((1, 0), (-1, 0), (0, 1), (0, -1))
@@ -118,7 +117,7 @@ def image_preprocess(image, foreground_value=None):
             image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_TRIANGLE
         )
         print("threshold value {}".format(ret))
-    
+    # 若前景像素为0, 将图像反色后再进行处理
     if foreground_value is not None and foreground_value == 0:
         image = cv2.bitwise_not(image)
 
@@ -164,16 +163,20 @@ def main():
     assert os.path.exists(args.image_path), "图像不存在"
     image = cv2.imread(args.image_path, cv2.IMREAD_GRAYSCALE)
     image = image_preprocess(image, args.foreground_value)
-    
-    plt.figure("Binary Image")
+
+    plt.figure()
+    plt.subplot(121)
     plt.imshow(image, cmap="gray")
+    plt.title("Binary Image")
+
     label_mask = region_label(image, n=args.n)
 
     print("region numbers: {}".format(np.max(label_mask)))
 
     cmap = generate_color_map(np.max(label_mask))
-    plt.figure("Region Label")
+    plt.subplot(122)
     plt.imshow(label_mask, cmap=cmap)
+    plt.title("Region Label")
     plt.show()
 
 

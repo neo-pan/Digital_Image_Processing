@@ -159,13 +159,16 @@ def main():
     assert os.path.exists(args.image_path), "图像不存在"
     image = imgplt.imread(args.image_path)
 
-    plt.figure("Original Image")
+    plt.figure()
+    plt.subplot(121)
     plt.imshow(image, cmap="gray")
+    plt.title("Source Image")
 
     image = imrotate(image, args.rotate_angle, args.interpolation_method)
 
-    plt.figure("Rotated Image")
+    plt.subplot(122)
     plt.imshow(image, cmap="gray")
+    plt.title("Rotated Image")
 
     plt.show()
 

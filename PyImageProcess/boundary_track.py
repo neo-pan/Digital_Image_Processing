@@ -2,11 +2,11 @@ import argparse
 import os
 from pprint import pprint
 
+import cv2
 import matplotlib
 import matplotlib.pyplot as plt
 import numba
 import numpy as np
-from cv2 import cv2
 from numba import njit
 from numba.typed import List
 
@@ -129,7 +129,7 @@ def _is_within_rect(shape, point):
     return True
 
 
-def plot_image_with_boundaries(image, boundaries, title=""):
+def plot_image_with_boundaries(image, boundaries, title="", subplot=None):
     boundaries = np.vstack([np.asarray(boundary) for boundary in boundaries])
     
     boundary_mask = np.zeros_like(image)
@@ -143,7 +143,11 @@ def plot_image_with_boundaries(image, boundaries, title=""):
             boundary_mask,                          # A
         )
     )
-    plt.figure("{} Boundaries".format(title))
+    if subplot==True:
+        plt.subplot(122)
+        plt.title("{} Boundaries".format(title))
+    else:
+        plt.figure("{} Boundaries".format(title))
     plt.imshow(image, cmap="gray")
     plt.imshow(boundary_mask)
 
@@ -196,8 +200,11 @@ def main():
     # 检验图像路径是否可用
     assert os.path.exists(args.image_path), "图像不存在"
     image = cv2.imread(args.image_path, cv2.IMREAD_GRAYSCALE)
-    plt.figure("Source Image")
+
+    plt.figure()
+    plt.subplot(121)
     plt.imshow(image, cmap="gray")
+    plt.title("Source Image")
 
     image = image_preprocess(image, args.foreground_value)
 
@@ -209,7 +216,7 @@ def main():
         if i >= 4:
             break
     
-    plot_image_with_boundaries(image, boundaries, "Binary Image with")
+    plot_image_with_boundaries(image, boundaries, "Binary Image with", subplot=True)
 
     plt.show()
 

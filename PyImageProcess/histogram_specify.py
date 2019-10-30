@@ -1,9 +1,9 @@
 import argparse
 import os
 
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-from cv2 import cv2
 from numba import njit
 
 HISTOGRAM_ALPHA = 0.5
@@ -222,7 +222,7 @@ def image_hist_specifiy(source_image, target_image):
     return result
 
 
-def plot_hist(hist, title):
+def plot_hist(hist, title, subplot=None):
     """根据统计信息绘制直方图
     """
     assert hist.ndim == 2
@@ -230,7 +230,11 @@ def plot_hist(hist, title):
     num_channels = hist.shape[0]
     x_coord = np.arange(0, DISCRETE_VALUE_NUM)
     params = {"alpha": HISTOGRAM_ALPHA, "width": 1}
-    plt.figure(title)
+    if subplot == True:
+        plt.subplot(122)
+        plt.title(title)
+    else:
+        plt.figure(title)
     for i in range(num_channels):
         plt.bar(
             x_coord,
@@ -263,8 +267,10 @@ def plot_image_and_hist(image, title):
     """绘制图像及其直方图
     """
     plt.figure("{} Image".format(title))
+    plt.subplot(121)
     plt.imshow(image.squeeze(), cmap="gray")
-    plot_hist(get_hist(image), "{} Histogram".format(title))
+    plt.title("{} Image".format(title))
+    plot_hist(get_hist(image), "{} Histogram".format(title), subplot=True)
 
 
 def parse_args():
@@ -298,10 +304,10 @@ def image_preprocess(image):
 
 def main():
     args = parse_args()
-    # 检验图像路径是否可用
-    assert os.path.exists(args.image_path), "图像不存在"
     if args.task == "equalize":
         assert args.source_path is not None
+        # 检验图像路径是否可用
+        assert os.path.exists(args.source_path), "图像不存在"
         source_image = image_preprocess(
             cv2.imread(args.source_path, cv2.IMREAD_UNCHANGED)
         )
@@ -310,6 +316,9 @@ def main():
 
     elif args.task == "specify":
         assert args.source_path is not None and args.target_path is not None
+        # 检验图像路径是否可用
+        assert os.path.exists(args.source_path), "图像不存在"
+        assert os.path.exists(args.target_path), "图像不存在"
         source_image = image_preprocess(
             cv2.imread(args.source_path, cv2.IMREAD_UNCHANGED)
         )
