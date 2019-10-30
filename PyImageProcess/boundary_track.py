@@ -7,8 +7,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numba
 import numpy as np
-from numba import njit
-from numba.typed import List
 
 from region_label import generate_color_map, region_label
 
@@ -43,12 +41,11 @@ EIGHT_TRACK_DIRS = (
 FOUR_TRACK_DIRS = ((0, 1), (-1, 0), (0, -1), (1, 0))
 
 
-@njit(cache=True)
 def boundary_track(image, n=8):
     """对二值图像进行区域外边界跟踪
     """
     # 确保为二值化图像
-    # assert image.dtype == np.uint8  #! numba 优化后无法正常判断
+    assert image.dtype == np.uint8
     assert image.ndim == 2
     count = np.bincount(image.ravel())
     assert count[0] + count[-1] == image.size
@@ -59,22 +56,16 @@ def boundary_track(image, n=8):
     # 用于标记该区域的边界是否已被跟踪
     region_tracked = np.zeros((num_regions,), dtype=np.int8)
 
-    # numba.typed.List 需要提前指定其内部元素类型
-    boundary = List()
-    boundaries = List()
-    boundary.append((-1, -1))
-    boundaries.append(list(boundary))
-    boundary.clear()
+    boundaries = list()
 
     height = image.shape[0]
     width = image.shape[1]
-
-    # np.pad(image, 1, "constant", constant_values=0)
 
     for i in range(height):
         for j in range(width):
             label = label_mask[i, j]
             if label != 0 and region_tracked[label - 1] == 0:
+                boundary = list()
                 P0 = (i, j)
                 P1, direct = track_next(image, boundary, point=P0, direct=0, n=n)
                 P_n = P1
@@ -84,13 +75,11 @@ def boundary_track(image, n=8):
                     P_n, direct = track_next(image, boundary, P_n_pre, direct, n)
 
                 region_tracked[label - 1] = 1
-                boundaries.append(list(boundary.copy()))
-                boundary.clear()
-    # 返回时去除最初加入的 (-1, -1)
-    return list(boundaries[1:])
+                boundaries.append(boundary)
+
+    return boundaries
 
 
-@njit(cache=True)
 def track_next(image, boundary, point, direct, n):
     """从给定点开始, 在其邻域中跟踪下一个边界点
     """
@@ -117,7 +106,6 @@ def track_next(image, boundary, point, direct, n):
     return (point[0], point[1]), 0
 
 
-@njit(cache=True)
 def _is_within_rect(shape, point):
     """判断给定点是否在图像内部
     """
@@ -130,20 +118,21 @@ def _is_within_rect(shape, point):
 
 
 def plot_image_with_boundaries(image, boundaries, title="", subplot=None):
+    # 将不同边界点的序列合并, 便于绘图
     boundaries = np.vstack([np.asarray(boundary) for boundary in boundaries])
-    
+
     boundary_mask = np.zeros_like(image)
     boundary_mask[boundaries[:, 0], boundaries[:, 1]] = 255
     # 将 boundary_mask 转化为4通道图像, 增加透明度通道便于叠加显示
     boundary_mask = np.dstack(
         (
-            boundary_mask - boundary_mask + 255,    # R
-            255 - boundary_mask,                    # G
-            255 - boundary_mask,                    # B
-            boundary_mask,                          # A
+            boundary_mask - boundary_mask + 255,  # R
+            255 - boundary_mask,  # G
+            255 - boundary_mask,  # B
+            boundary_mask,  # A
         )
     )
-    if subplot==True:
+    if subplot == True:
         plt.subplot(122)
         plt.title("{} Boundaries".format(title))
     else:
@@ -215,7 +204,7 @@ def main():
         # 为节省运行时间, 仅打印前5条边界点坐标供展示
         if i >= 4:
             break
-    
+
     plot_image_with_boundaries(image, boundaries, "Binary Image with", subplot=True)
 
     plt.show()

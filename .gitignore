@@ -114,3 +114,7 @@ imgs/
 
 # compressed files
 *.zip
+
+# courses notes
+homework20-22.md
+slides05-0701.md

@@ -96,6 +96,17 @@ def _one_dim_fourier_filter(image, filter_type, width=None, kernel=None):
     return result_image
 
 
+def get_image_log_fourier_spectrum(image):
+    '''计算图像的log傅里叶频谱
+    '''
+    if image.ndim == 3:
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    fft_image = fft.fft2(image)
+    fft_spectrum = fft.fftshift(fft_image)
+    log_spectrum = np.log(np.abs(fft_spectrum))
+    return log_spectrum
+
+
 def image_preprocess(image):
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     return image
@@ -154,10 +165,15 @@ if __name__ == "__main__":
     image = cv2.imread(args.image_path)
     image = image_preprocess(image)
 
-    plt.figure()
+    # 画出原图及其频谱
+    plt.figure("Source Image")
     plt.subplot(121)
     plt.imshow(image, cmap="gray")
-    plt.title("Source Image")
+    plt.title("Image")
+    plt.subplot(122)
+    plt.imshow(get_image_log_fourier_spectrum(image), cmap="gray")
+    plt.title("Log Spectrum")
+
     if args.filter in ["low_pass", "high_pass"]:
         result = fourier_filter(image, args.filter, width=args.width)
     elif args.filter == "kernel":
@@ -170,8 +186,13 @@ if __name__ == "__main__":
             kernel = get_laplacian_kernel()
         result = fourier_filter(image, args.filter, kernel=kernel)
 
-    plt.subplot(122)
+    # 画出结果图及其频谱
+    plt.figure("Result")
+    plt.subplot(121)
     plt.imshow(result, cmap="gray")
-    plt.title("Filtered Image")
+    plt.title("Image")
+    plt.subplot(122)
+    plt.imshow(get_image_log_fourier_spectrum(result), cmap="gray")
+    plt.title("Log Spectrum")
  
     plt.show()
